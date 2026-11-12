@@ -33,6 +33,10 @@ jobs:
       - name: Build assets and run the entire Ruby test suite
         run: |
           make assets
+          for fixture in tests/*.yml; do
+            name=$(basename "${fixture}" .yml)
+            make "target/html/${name}.html"
+          done
           bundle exec ruby -e 'ARGV << "--no-cov"; Dir["test/**/test_*.rb"].sort.each { |file| require_relative file }; ARGV.delete("--no-cov")'
           bundle exec rubocop test/pages/test_makefile.rb test/test_entry_size.rb
       - name: Render and verify every integration fixture
