@@ -4,5 +4,19 @@
     "config:base"
   ],
   "automerge": true,
-  "platformAutomerge": false
+  "platformAutomerge": false,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^Makefile$/"
+      ],
+      "matchStrings": [
+        "SAXON_RELEASE = (?<currentValue>SaxonHE[0-9]+-[0-9]+)"
+      ],
+      "depNameTemplate": "Saxonica/Saxon-HE",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "regex:^SaxonHE(?<major>\\d+)-(?<minor>\\d+)$"
+    }
+  ]
 }

@@ -54,7 +54,7 @@ class TestMakefile < Minitest::Test
     Dir.mktmpdir do |dir|
       FileUtils.cp(File.join(__dir__, '../../Makefile'), dir)
       stdout, = Open3.capture2('make', '-n', '-C', dir, 'entries', '-o', 'assets')
-      assert_includes(stdout, 'Saxon-HE', stdout)
+      assert_includes(stdout, 'SaxonHE', stdout)
     end
   end
 

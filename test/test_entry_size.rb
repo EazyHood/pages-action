@@ -17,6 +17,7 @@ class TestEntrySize < Minitest::Test
       FileUtils.mkdir_p(%w[bin target/css target/js].map { |path| File.join(dir, path) })
       FileUtils.ln_s(File.join(source, 'xsl'), File.join(dir, 'target/xsl'))
       FileUtils.ln_s(saxon, File.join(dir, 'target/saxon.jar'))
+      FileUtils.ln_s(File.join(source, 'target/lib'), File.join(dir, 'target/lib'))
       File.write(File.join(dir, 'target/css/main.css'), 'body{}')
       File.write(File.join(dir, 'target/js/main.js'), '')
       input = File.join(dir, 'input facts.fb')

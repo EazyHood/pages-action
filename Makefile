@@ -20,6 +20,7 @@ CSS = target/css/main.css
 JS = target/js/main.js
 JS_TEST = target/js/test.js
 SAXON = target/saxon.jar
+SAXON_RELEASE = SaxonHE12-10
 PAGES_ACTION_VERSION ?= 0.0.0
 
 export
@@ -94,15 +95,18 @@ entries: assets $(SAXON)
 clean:
 	rm -rf target
 
-$(SAXON): | target
-	p=net/sf/saxon/Saxon-HE/9.8.0-5/Saxon-HE-9.8.0-5.jar
-	m2=$${HOME}/.m2/repository/$${p}
-	if [ -e "$${m2}" ]; then
-		cp "$${m2}" "$(SAXON)"
-	else
-		wget --no-verbose -O "$(SAXON).tmp" "https://repo.maven.apache.org/maven2/$${p}"
-		mv "$(SAXON).tmp" "$(SAXON)"
-	fi
+$(SAXON): Makefile | target
+	staging=$$(mktemp -d "$$(pwd)/target/saxon.XXXXXX")
+	trap 'rm -rf "$${staging}"' EXIT
+	wget --no-verbose -O "$${staging}/distribution.zip" \
+		"https://github.com/Saxonica/Saxon-HE/releases/download/$(SAXON_RELEASE)/$(SAXON_RELEASE)J.zip"
+	(cd "$${staging}" && jar xf distribution.zip)
+	version=$${SAXON_RELEASE#SaxonHE}
+	version=$${version//-/.}
+	mkdir -p target/lib
+	cp "$${staging}"/lib/*.jar target/lib/
+	cp "$${staging}/saxon-he-$${version}.jar" "$(SAXON).tmp"
+	mv "$(SAXON).tmp" "$(SAXON)"
 
 install: $(SAXON) | target
 	./makes/install.sh
