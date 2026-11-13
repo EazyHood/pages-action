@@ -37,7 +37,7 @@ jobs:
       - run: make install
       - name: Reproduce the original test seed
         env:
-          TESTOPTS: --seed ${{ matrix.seed }}
+          TESTOPTS: --seed=${{ matrix.seed }}
         run: make assets rake
       - name: Record per-file coverage
         if: always()
