@@ -1,0 +1,74 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024-2026 Zerocracy
+# SPDX-License-Identifier: MIT
+---
+name: Compare Pages coverage
+on:
+  push:
+    branches: [validate-pages-coverage-20261112]
+permissions:
+  contents: read
+jobs:
+  coverage:
+    name: coverage (${{ matrix.case }})
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include: [{"case": "1471-base", "sha": "df18d4a62294b0905406b027f6139d1184ee8c75", "seed": 2749}, {"case": "1471-pr", "sha": "10839b5c6a741dd0ec293c8bae1490ad1a6505ba", "seed": 2749}, {"case": "1472-base", "sha": "df18d4a62294b0905406b027f6139d1184ee8c75", "seed": 16446}, {"case": "1472-pr", "sha": "519e8a83ef47d39e8c8821ca1ae0ae9d713ba09a", "seed": 16446}, {"case": "1473-base", "sha": "df18d4a62294b0905406b027f6139d1184ee8c75", "seed": 51821}, {"case": "1473-pr", "sha": "c0f47b38c2852a915ef6164697b074929a16b738", "seed": 51821}, {"case": "1474-base", "sha": "df18d4a62294b0905406b027f6139d1184ee8c75", "seed": 22331}, {"case": "1474-pr", "sha": "cc710050674628582102b21ee4061aaa4cf13146", "seed": 22331}, {"case": "1475-base", "sha": "df18d4a62294b0905406b027f6139d1184ee8c75", "seed": 35043}, {"case": "1475-pr", "sha": "427b363936f22b683102a9ecf44208293cc3d4ac", "seed": 35043}, {"case": "1476-base", "sha": "df18d4a62294b0905406b027f6139d1184ee8c75", "seed": 18994}, {"case": "1476-pr", "sha": "909385175c4119e00974fe46e36825f8551b8692", "seed": 18994}, {"case": "1477-base", "sha": "df18d4a62294b0905406b027f6139d1184ee8c75", "seed": 65215}, {"case": "1477-pr", "sha": "72294f30982f84453dc43da0fc765b54a298a6cc", "seed": 65215}, {"case": "base-original", "sha": "df18d4a62294b0905406b027f6139d1184ee8c75", "seed": 29763}]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ matrix.sha }}
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 4.0.9
+          bundler-cache: true
+      - run: bundle config set --global path "$(pwd)/vendor/bundle"
+      - run: sudo apt-get update --yes --fix-missing && sudo apt-get install --yes libxml2-utils
+      - run: make install
+      - name: Reproduce the original test seed
+        env:
+          TESTOPTS: --seed ${{ matrix.seed }}
+        run: make assets rake
+      - name: Record per-file coverage
+        if: always()
+        env:
+          PROBE_CASE: ${{ matrix.case }}
+          PROBE_SHA: ${{ matrix.sha }}
+          PROBE_SEED: ${{ matrix.seed }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          result = Path('coverage/.resultset.json')
+          if not result.exists():
+              raise SystemExit('No coverage result was produced')
+          summary = {'case': os.environ['PROBE_CASE'], 'sha': os.environ['PROBE_SHA'], 'seed': os.environ['PROBE_SEED'], 'files': []}
+          for suite in json.loads(result.read_text()).values():
+              for name, coverage in suite['coverage'].items():
+                  lines = coverage['lines'] if isinstance(coverage, dict) else coverage
+                  measured = [line for line in lines if line is not None]
+                  covered = sum(line > 0 for line in measured)
+                  path = Path(name)
+                  summary['files'].append({'file': str(path.relative_to(Path.cwd())), 'sha256': hashlib.sha256(path.read_bytes()).hexdigest(), 'covered': covered, 'total': len(measured), 'percent': 100 * covered / len(measured) if measured else 100, 'uncovered_lines': [i + 1 for i, count in enumerate(lines) if count == 0]})
+          Path('coverage/probe-summary.json').write_text(json.dumps(summary, indent=2))
+          print(json.dumps(summary, indent=2))
+          PY
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: coverage-${{ matrix.case }}
+          include-hidden-files: true
+          path: |
+            coverage/.resultset.json
+            coverage/probe-summary.json
+            coverage/coverage.xml
